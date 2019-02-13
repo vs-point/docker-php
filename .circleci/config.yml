@@ -12,17 +12,17 @@ jobs:
     - run:
         name: Login to DockerHub
         command: docker login -u $DOCKERHUB_LOGIN -p$DOCKERHUB_PASS
-#
-#    - run:
-#        name: davidsolc/php:7.3-fpm
-#        command: |
-#          docker image build -t davidsolc/php:7.3-fpm ./php/7.3-fpm
-#          docker image push davidsolc/php:7.3-fpm
-#    - run:
-#        name: davidsolc/php:7.3-fpm-production
-#        command: |
-#          docker image build -t davidsolc/php:7.3-fpm-production ./php/7.3-fpm-production
-#          docker image push davidsolc/php:7.3-fpm-production
+
+    - run:
+        name: davidsolc/php:7.3-fpm
+        command: |
+          docker image build -t davidsolc/php:7.3-fpm ./php/7.3-fpm
+          docker image push davidsolc/php:7.3-fpm
+    - run:
+        name: davidsolc/php:7.3-fpm-production
+        command: |
+          docker image build -t davidsolc/php:7.3-fpm-production ./php/7.3-fpm-production
+          docker image push davidsolc/php:7.3-fpm-production
 
     - run:
         name: davidsolc/php:7.3-fpm-alpine
