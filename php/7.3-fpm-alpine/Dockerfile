@@ -16,7 +16,7 @@ RUN apk update \
 		zip \
 	&& pecl install ds \
 	&& pecl install redis-4.2.0 \
-	&& pecl install xdebug-2.7.0RC1 \
+	&& pecl install xdebug-2.7.0 \
 	&& docker-php-ext-enable \
 		ds \
 		redis \

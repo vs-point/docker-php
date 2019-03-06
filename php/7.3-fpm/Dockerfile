@@ -11,7 +11,7 @@ RUN apt-get update \
 		libzip-dev \
 	&& pecl install ds \
 	&& pecl install redis-4.2.0 \
-	&& pecl install xdebug-2.7.0RC1 \
+	&& pecl install xdebug-2.7.0 \
 	&& docker-php-ext-configure \
 		pgsql -with-pgsql=/usr/local/pgsql \
 	&& docker-php-ext-enable \
