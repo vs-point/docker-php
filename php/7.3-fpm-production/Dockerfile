@@ -33,4 +33,6 @@ RUN apt-get update \
 	&& apt-get autoremove -y \
 	&& rm -rf /var/lib/apt/lists/* /var/lib/log/* /tmp/* /var/tmp/*
 
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
 WORKDIR /usr/local/app

@@ -40,4 +40,6 @@ RUN apk update \
 	&& rm -rf /var/cache/apk/* \
 	&& rm -rf /tmp/*
 
+RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+
 WORKDIR /usr/local/app
