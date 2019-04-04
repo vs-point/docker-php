@@ -1,11 +1,12 @@
 FROM php:7.3-fpm-alpine
 
 RUN apk update \
-	&& apk add --no-cache \
+	&& apk add --no-cache --allow-untrusted --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ \
 		autoconf \
 		curl \
 		g++ \
 		git \
+		gnu-libiconv \
 		icu-dev \
 		libpng-dev \
 		libtool \
@@ -13,8 +14,11 @@ RUN apk update \
 		make \
 		postgresql-dev \
 		unzip \
-		zip \
-	&& pecl install ds \
+		zip
+
+ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
+
+RUN pecl install ds \
 	&& pecl install redis-4.2.0 \
 	&& docker-php-ext-enable \
 		ds \
@@ -30,8 +34,9 @@ RUN apk update \
 		pgsql \
 		zip \
 	&& curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-	&& composer global require "hirak/prestissimo:^0.3" \
-	&& apk del \
+	&& composer global require "hirak/prestissimo:^0.3"
+
+RUN apk del \
 		autoconf \
 		g++ \
 		libtool \
