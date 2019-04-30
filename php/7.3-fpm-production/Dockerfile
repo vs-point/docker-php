@@ -9,6 +9,7 @@ RUN apt-get update \
 		libpq-dev \
 		libicu-dev \
 		libzip-dev \
+		libmosquitto-dev \
 	&& pecl install ds \
 	&& pecl install redis-4.2.0 \
 	&& pecl install Mosquitto-alpha \
@@ -17,7 +18,7 @@ RUN apt-get update \
 	&& docker-php-ext-enable \
 		ds \
 		redis \
-		Mosquitto-alpha \
+		mosquitto \
 	&& docker-php-ext-install \
 		bcmath \
 		gd \

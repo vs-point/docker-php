@@ -9,6 +9,7 @@ RUN apt-get update \
 		libpq-dev \
 		libicu-dev \
 		libzip-dev \
+		libmosquitto-dev \
 	&& pecl install ds \
 	&& pecl install redis-4.2.0 \
 	&& pecl install xdebug-2.7.0 \
@@ -19,7 +20,7 @@ RUN apt-get update \
 		ds \
 		redis \
 		xdebug \
-		Mosquitto-alpha \
+		mosquitto \
 	&& docker-php-ext-install \
 		bcmath \
 		gd \
