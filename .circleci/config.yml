@@ -17,8 +17,8 @@ jobs:
     - run:
         name: vspoint/php:7.2-fpm
         command: |
-          docker image build -t vspoint/php:7.2-fpm-alpine-production ./php/7.2-fpm-alpine-production
-          docker image push vspoint/php:7.2-fpm-alpine-production
+          docker image build -t vspoint/php:7.2-fpm ./php/7.2-fpm
+          docker image push vspoint/php:7.2-fpm
 
     # php 7.3
     - run:
