@@ -14,7 +14,8 @@ RUN apk update \
 		make \
 		postgresql-dev \
 		unzip \
-		zip
+		zip \
+		mosquitto-dev
 
 ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
 
@@ -26,7 +27,7 @@ RUN pecl install ds \
 		ds \
 		redis \
 		xdebug \
-		Mosquitto-alpha \
+		mosquitto \
 	&& docker-php-ext-install \
 		bcmath \
 		gd \
