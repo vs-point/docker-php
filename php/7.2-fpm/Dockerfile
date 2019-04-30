@@ -1,27 +1,20 @@
-FROM php:7.3-fpm-alpine
+FROM php:7.2-fpm
 
-RUN apk update \
-	&& apk add --no-cache --allow-untrusted --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ \
-		autoconf \
-		curl \
-		g++ \
+RUN apt-get update \
+	&& apt-get install -y \
 		git \
-		gnu-libiconv \
-		icu-dev \
-		libpng-dev \
-		libtool \
-		libzip-dev \
-		make \
-		postgresql-dev \
+		zip \
 		unzip \
-		zip
-
-ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
-
-RUN pecl install ds \
+		libpng-dev \
+		libpq-dev \
+		libicu-dev \
+		libzip-dev \
+	&& pecl install ds \
 	&& pecl install redis-4.2.0 \
 	&& pecl install xdebug-2.7.0 \
 	&& pecl install Mosquitto-alpha \
+	&& docker-php-ext-configure \
+		pgsql -with-pgsql=/usr/local/pgsql \
 	&& docker-php-ext-enable \
 		ds \
 		redis \
@@ -37,15 +30,11 @@ RUN pecl install ds \
 		pgsql \
 		zip \
 	&& curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-	&& composer global require "hirak/prestissimo:^0.3"
-
-RUN apk del \
-		autoconf \
-		g++ \
-		libtool \
-		make \
-	&& rm -rf /var/cache/apk/* \
-	&& rm -rf /tmp/*
+	&& composer global require "hirak/prestissimo:^0.3" \
+	&& apt-get clean -y \
+	&& apt-get autoclean -y \
+	&& apt-get autoremove -y \
+	&& rm -rf /var/lib/apt/lists/* /var/lib/log/* /tmp/* /var/tmp/*
 
 RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 

@@ -11,11 +11,13 @@ RUN apt-get update \
 		libzip-dev \
 	&& pecl install ds \
 	&& pecl install redis-4.2.0 \
+	&& pecl install Mosquitto-alpha \
 	&& docker-php-ext-configure \
 		pgsql -with-pgsql=/usr/local/pgsql \
 	&& docker-php-ext-enable \
 		ds \
 		redis \
+		Mosquitto-alpha \
 	&& docker-php-ext-install \
 		bcmath \
 		gd \

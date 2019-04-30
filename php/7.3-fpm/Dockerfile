@@ -12,12 +12,14 @@ RUN apt-get update \
 	&& pecl install ds \
 	&& pecl install redis-4.2.0 \
 	&& pecl install xdebug-2.7.0 \
+	&& pecl install Mosquitto-alpha \
 	&& docker-php-ext-configure \
 		pgsql -with-pgsql=/usr/local/pgsql \
 	&& docker-php-ext-enable \
 		ds \
 		redis \
 		xdebug \
+		Mosquitto-alpha \
 	&& docker-php-ext-install \
 		bcmath \
 		gd \

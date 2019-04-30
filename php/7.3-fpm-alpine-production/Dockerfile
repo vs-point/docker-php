@@ -20,9 +20,11 @@ ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
 
 RUN pecl install ds \
 	&& pecl install redis-4.2.0 \
+	&& pecl install Mosquitto-alpha \
 	&& docker-php-ext-enable \
 		ds \
 		redis \
+		Mosquitto-alpha \
 	&& docker-php-ext-install \
 		bcmath \
 		gd \
