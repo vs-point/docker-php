@@ -22,6 +22,7 @@ RUN apt-get update \
 		gd \
 		intl \
 		pdo \
+		mysqli \
 		pdo_mysql \
 		pdo_pgsql \
 		pgsql \

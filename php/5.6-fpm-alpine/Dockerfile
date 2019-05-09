@@ -29,6 +29,7 @@ RUN pecl install redis-4.2.0 \
 		gd \
 		intl \
 		pdo \
+		mysqli \
 		pdo_mysql \
 		pdo_pgsql \
 		pgsql \
