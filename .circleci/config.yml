@@ -13,6 +13,18 @@ jobs:
         name: Login to DockerHub
         command: docker login -u $DOCKERHUB_LOGIN -p$DOCKERHUB_PASS
 
+    # php 5.6
+    - run:
+        name: vspoint/php:5.6-fpm
+        command: |
+          docker image build -t vspoint/php:5.6-fpm ./php/5.6-fpm
+          docker image push vspoint/php:5.6-fpm
+    - run:
+        name: vspoint/php:5.6-fpm-alpine
+        command: |
+          docker image build -t vspoint/php:5.6-fpm-alpine ./php/7.6-fpm-alpine
+          docker image push vspoint/php:5.6-fpm-alpine
+
     # php 7.2
     - run:
         name: vspoint/php:7.2-fpm
