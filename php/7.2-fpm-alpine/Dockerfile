@@ -16,6 +16,7 @@ RUN apk update \
 		unzip \
 		zip \
 		gmp-dev \
+		libmemcached-dev \
 		mosquitto-dev
 
 ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
@@ -24,11 +25,15 @@ RUN pecl install ds \
 	&& pecl install redis-4.2.0 \
 	&& pecl install xdebug-2.7.0 \
 	&& pecl install Mosquitto-alpha \
+	&& pecl install memcache \
+	&& pecl install memcached \
 	&& docker-php-ext-enable \
 		ds \
 		redis \
 		xdebug \
 		mosquitto \
+		memcache \
+		memcached \
 	&& docker-php-ext-install \
 		bcmath \
 		gd \
