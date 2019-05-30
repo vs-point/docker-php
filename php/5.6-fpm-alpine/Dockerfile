@@ -15,6 +15,7 @@ RUN apk update \
 		postgresql-dev \
 		unzip \
 		zip \
+		gmp-dev \
 		mosquitto-dev
 
 ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
@@ -33,6 +34,7 @@ RUN pecl install redis-4.2.0 \
 		pdo_mysql \
 		pdo_pgsql \
 		pgsql \
+		gmp \
 		zip \
 	&& curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
 	&& composer global require "hirak/prestissimo:^0.3"

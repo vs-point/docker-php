@@ -9,7 +9,9 @@ RUN apt-get update \
 		libpq-dev \
 		libicu-dev \
 		libzip-dev \
+		libgmp-dev \
 		libmosquitto-dev \
+	&& ln -s /usr/include/x86_64-linux-gnu/gmp.h /usr/include/gmp.h \
 	&& pecl install redis-4.2.0 \
 	&& pecl install Mosquitto-alpha \
 	&& docker-php-ext-configure \
@@ -26,6 +28,7 @@ RUN apt-get update \
 		pdo_mysql \
 		pdo_pgsql \
 		pgsql \
+		gmp \
 		zip \
 	&& curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
 	&& composer global require "hirak/prestissimo:^0.3" \
