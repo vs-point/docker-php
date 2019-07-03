@@ -12,13 +12,15 @@ RUN apt-get update \
 		libgmp-dev \
 		libmemcached-dev \
 		libmosquitto-dev \
+		librabbitmq-dev \
 	&& ln -s /usr/include/x86_64-linux-gnu/gmp.h /usr/include/gmp.h \
 	&& pecl install ds \
 	&& pecl install redis-4.2.0 \
 	&& pecl install xdebug-2.7.0 \
 	&& pecl install Mosquitto-alpha \
-	&& pecl install memcache \
+#	&& pecl install memcache \
 	&& pecl install memcached \
+	&& pecl install amqp \
 	&& docker-php-ext-configure \
 		pgsql -with-pgsql=/usr/local/pgsql \
 	&& docker-php-ext-enable \
@@ -26,8 +28,9 @@ RUN apt-get update \
 		redis \
 		xdebug \
 		mosquitto \
-		memcache \
+#		memcache \
 		memcached \
+		amqp \
 	&& docker-php-ext-install \
 		bcmath \
 		gd \

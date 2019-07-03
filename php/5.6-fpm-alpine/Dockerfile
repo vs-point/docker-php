@@ -17,6 +17,7 @@ RUN apk update \
 		zip \
 		gmp-dev \
 		libmemcached-dev \
+		rabbitmq-c-dev \
 		mosquitto-dev
 
 ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
@@ -25,11 +26,13 @@ RUN pecl install redis-4.2.0 \
 	&& pecl install Mosquitto-alpha \
 	&& pecl install memcache \
 	&& pecl install memcached-2.2.0 \
+	&& pecl install amqp \
 	&& docker-php-ext-enable \
 		redis \
 		mosquitto \
 		memcache \
 		memcached \
+		amqp \
 	&& docker-php-ext-install \
 		bcmath \
 		gd \
