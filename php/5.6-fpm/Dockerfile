@@ -16,7 +16,7 @@ RUN apt-get update \
 	&& ln -s /usr/include/x86_64-linux-gnu/gmp.h /usr/include/gmp.h \
 	&& pecl install redis-4.2.0 \
 	&& pecl install Mosquitto-alpha \
-	&& pecl install memcache \
+	&& pecl install memcache-3.0.8 \
 	&& pecl install memcached-2.2.0 \
 	&& pecl install amqp \
 	&& docker-php-ext-configure \

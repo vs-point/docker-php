@@ -18,15 +18,19 @@ RUN apk update \
 		gmp-dev \
 		libmemcached-dev \
 		rabbitmq-c-dev \
+		libssh2 \
+		libssh2-dev \
 		mosquitto-dev
 
 ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
 
 RUN pecl install redis-4.2.0 \
 	&& pecl install Mosquitto-alpha \
-	&& pecl install memcache \
+	&& pecl install memcache-2.2.7 \
 	&& pecl install memcached-2.2.0 \
 	&& pecl install amqp \
+	&& pecl install ssh2-0.13 \
+	&& echo "extension=ssh2.so" >> /usr/local/etc/php/conf.d/docker-php-ext-ssh2.ini \
 	&& docker-php-ext-enable \
 		redis \
 		mosquitto \
