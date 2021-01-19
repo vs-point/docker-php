@@ -37,23 +37,21 @@ RUN docker-php-ext-configure gd \
         --with-jpeg \
         --with-webp
         
-RUN pecl install ds \
-	&& pecl install redis-5.0.0 \
-	&& pecl install xdebug-2.9.6 \
-	&& pecl install Mosquitto-0.4.0 \
-#	&& pecl install memcache \
-	&& pecl install memcached-3.1.5 \
-	&& pecl install amqp-1.10.2 \
-	&& pecl install ssh2-1.2 \
-	&& echo "extension=ssh2.so" >> /usr/local/etc/php/conf.d/docker-php-ext-ssh2.ini \
+RUN pecl install ds-1.3.0 \
+	&& pecl install redis-5.3.2 \
+#	&& pecl install Mosquitto-0.4.0 \
+	&& pecl install memcache-8.0 \
+#	&& pecl install memcached-3.1.5 \
+#	&& pecl install amqp-1.10.2 \
+#	&& pecl install ssh2-1.2 \
+#	&& echo "extension=ssh2.so" >> /usr/local/etc/php/conf.d/docker-php-ext-ssh2.ini \
 	&& docker-php-ext-enable \
 		ds \
 		redis \
-		xdebug \
-		mosquitto \
-#		memcache \
-		memcached \
-		amqp \
+#		mosquitto \
+		memcache \
+#		memcached \
+#		amqp \
 	&& docker-php-ext-install \
 		bcmath \
 		gd \
