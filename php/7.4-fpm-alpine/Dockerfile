@@ -20,10 +20,23 @@ RUN apk update \
 		rabbitmq-c-dev \
 		libssh2 \
 		libssh2-dev \
-		mosquitto-dev
+		mosquitto-dev \
+		perl-image-exiftool \
+        	jpeg-dev \
+        	freetype \
+        	freetype-dev \
+       	libjpeg-turbo-dev \
+       	libwebp \
+       	libwebp-dev
 
 ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
 
+RUN docker-php-ext-configure gd \
+        --enable-gd \
+        --with-freetype \
+        --with-jpeg \
+        --with-webp
+        
 RUN pecl install ds \
 	&& pecl install redis-5.0.0 \
 	&& pecl install xdebug-2.9.6 \
@@ -51,8 +64,10 @@ RUN pecl install ds \
 		pgsql \
 		gmp \
 		zip \
+		exif \
+		gd \
 	&& curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-	&& composer global require "hirak/prestissimo:^0.3"
+	&& composer self-update --snapshot
 
 RUN apk del \
 		autoconf \

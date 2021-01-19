@@ -1,4 +1,4 @@
-FROM php:7.4-fpm-alpine
+FROM php:8.0-fpm-alpine
 
 RUN apk update \
 	&& apk add --no-cache --allow-untrusted --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ \
@@ -39,6 +39,7 @@ RUN docker-php-ext-configure gd \
         
 RUN pecl install ds \
 	&& pecl install redis-5.0.0 \
+	&& pecl install xdebug-2.9.6 \
 	&& pecl install Mosquitto-0.4.0 \
 #	&& pecl install memcache \
 	&& pecl install memcached-3.1.5 \
@@ -48,6 +49,7 @@ RUN pecl install ds \
 	&& docker-php-ext-enable \
 		ds \
 		redis \
+		xdebug \
 		mosquitto \
 #		memcache \
 		memcached \
