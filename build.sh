@@ -5,10 +5,6 @@ docker image rm php:5.6-fpm-alpine
 docker build --no-cache -t vspoint/php:5.6-fpm-alpine php/5.6-fpm-alpine/.
 docker push vspoint/php:5.6-fpm-alpine
 
-docker build --no-cache -t vspoint/php:5.6-fpm-alpine-production php/5.6-fpm-alpine-production/.
-docker push vspoint/php:5.6-fpm-alpine-production
-
-
 docker image rm php:7.1-fpm-alpine
 docker build --no-cache -t vspoint/php:7.1-fpm-alpine php/7.1-fpm-alpine/.
 docker push vspoint/php:7.1-fpm-alpine

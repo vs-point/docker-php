@@ -14,7 +14,7 @@ RUN apt-get update \
 		libmosquitto-dev \
 		librabbitmq-dev \
 	&& ln -s /usr/include/x86_64-linux-gnu/gmp.h /usr/include/gmp.h \
-	&& pecl install ds \
+	&& pecl install ds-1.3.0 \
 	&& pecl install redis-4.2.0 \
 	&& pecl install Mosquitto-alpha \
 #	&& pecl install memcache \

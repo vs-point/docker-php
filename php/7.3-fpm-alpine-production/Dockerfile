@@ -38,7 +38,7 @@ RUN docker-php-ext-configure gd \
         --with-webp-dir=/usr/lib/ \
         --with-gd
 
-RUN pecl install ds \
+RUN pecl install ds-1.3.0 \
 	&& pecl install redis-5.3.2 \
 	&& pecl install Mosquitto-0.4.0 \
 	&& pecl install memcache-4.0.5.2 \
