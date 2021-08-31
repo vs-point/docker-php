@@ -19,6 +19,9 @@ docker image rm php:7.3-fpm-alpine
 docker build --no-cache -t vspoint/php:7.3-fpm-alpine php/7.3-fpm-alpine/.
 docker push vspoint/php:7.3-fpm-alpine
 
+docker build --no-cache -t vspoint/php:7.3-fpm-adb-alpine php/7.3-fpm-adb-alpine/.
+docker push vspoint/php:7.3-fpm-adb-alpine
+
 docker build --no-cache -t vspoint/php:7.3-fpm-alpine-production php/7.3-fpm-alpine-production/.
 docker push vspoint/php:7.3-fpm-alpine-production
 
