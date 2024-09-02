@@ -27,7 +27,8 @@ RUN apk update \
         	freetype-dev \
        	libjpeg-turbo-dev \
        	libwebp \
-       	libwebp-dev
+       	libwebp-dev \
+       	libxml2-dev
 
 ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
 
@@ -65,6 +66,7 @@ RUN pecl install ds \
 		pgsql \
 		gmp \
 		zip \
+		soap \
 	&& curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
 	&& composer self-update --snapshot
 

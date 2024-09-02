@@ -61,6 +61,7 @@ RUN pecl install ds \
 		intl \
 		pdo \
 		pdo_mysql \
+		mysqli \
 		pdo_pgsql \
 		pgsql \
 		gmp \
