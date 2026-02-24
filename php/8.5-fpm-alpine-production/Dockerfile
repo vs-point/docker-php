@@ -40,7 +40,7 @@ RUN docker-php-ext-configure gd \
 RUN pecl install ds-1.6.0 \
 	&& pecl install redis-6.3.0 \
 #	&& pecl install Mosquitto-0.4.0 \
-	&& pecl install memcache-8.2 \
+#	&& pecl install memcache-8.2 \
 #	&& pecl install memcached-3.4.0 \
 #	&& pecl install amqp-2.2.0 \
 #	&& pecl install ssh2-1.4.1 \
@@ -49,7 +49,7 @@ RUN pecl install ds-1.6.0 \
 		ds \
 		redis \
 #		mosquitto \
-		memcache \
+#		memcache \
 #		memcached \
 #		amqp \
 	&& docker-php-ext-install \
