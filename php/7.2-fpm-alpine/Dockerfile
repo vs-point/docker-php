@@ -1,7 +1,7 @@
 FROM php:7.2-fpm-alpine
 
 RUN apk update \
-	&& apk add --no-cache --allow-untrusted --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ \
+	&& apk add --no-cache --allow-untrusted --repository http://dl-cdn.alpinelinux.org/alpine/v3.14/community/ \
 		autoconf \
 		curl \
 		g++ \
@@ -39,7 +39,7 @@ RUN docker-php-ext-configure gd \
         --with-webp-dir=/usr/lib/ \
         --with-gd
 
-RUN pecl install ds \
+RUN pecl install ds-1.3.0 \
 	&& pecl install redis-5.3.2 \
 	&& pecl install xdebug-2.7.0 \
 	&& pecl install Mosquitto-0.4.0 \
@@ -68,7 +68,7 @@ RUN pecl install ds \
 		zip \
 		soap \
 	&& curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-	&& composer self-update --snapshot
+	&& composer self-update 2.2.9
 
 RUN apk del \
 		autoconf \
