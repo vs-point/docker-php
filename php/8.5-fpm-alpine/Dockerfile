@@ -25,6 +25,7 @@ RUN apk update \
         	jpeg-dev \
         	freetype \
         	freetype-dev \
+        	linux-headers \
        	libjpeg-turbo-dev \
        	libwebp \
        	libwebp-dev
