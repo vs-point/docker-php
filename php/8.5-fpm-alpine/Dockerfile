@@ -8,6 +8,7 @@ RUN apk update \
 		git \
 		gnu-libiconv \
 		icu-dev \
+		icu-data-full \
 		libpng-dev \
 		libtool \
 		libzip-dev \

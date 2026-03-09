@@ -49,5 +49,5 @@ docker image rm php:8.5-fpm-alpine
 docker buildx build --no-cache -t vspoint/php:8.5-fpm-alpine php/8.5-fpm-alpine/.
 docker push vspoint/php:8.5-fpm-alpine
 
-docker build --no-cache -t vspoint/php:8.5-fpm-alpine-production php/8.5-fpm-alpine-production/.
+docker buildx build --no-cache -t vspoint/php:8.5-fpm-alpine-production php/8.5-fpm-alpine-production/.
 docker push vspoint/php:8.5-fpm-alpine-production
