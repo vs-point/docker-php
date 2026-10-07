@@ -3,7 +3,16 @@ name: Docker
 # Staví vspoint/php:<verze>-fpm-alpine(-production) pro linux/amd64 i linux/arm64
 # podle versions.json a pushuje je na Docker Hub.
 #
-# Potřebné secrets v repozitáři: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
+# Spouští se:
+#   - po pushi do master (změna Dockerfile, versions.json nebo tohoto workflow)
+#   - automaticky 1. den v měsíci - přestaví image načisto (bez cache) z aktuálních
+#     základních image php:*, aby obsahovaly nejnovější patch verzi PHP a bezpečnostní opravy
+#   - ručně: Actions -> Docker -> Run workflow
+# Pull requesty se jen staví a testují, nic se nepushuje.
+#
+# Potřebné secrets v repozitáři (Settings -> Secrets and variables -> Actions):
+#   DOCKERHUB_USERNAME - uživatel Docker Hubu s právem zápisu do vspoint/php
+#   DOCKERHUB_TOKEN    - jeho Personal access token se scope "Read & Write"
 
 on:
   push:
@@ -18,8 +27,8 @@ on:
       - 'versions.json'
       - '.github/workflows/docker.yml'
   schedule:
-    # každé pondělí ráno - bezpečnostní aktualizace základních image
-    - cron: '0 3 * * 1'
+    # 1. den v měsíci ve 3:00 UTC
+    - cron: '0 3 1 * *'
   workflow_dispatch:
 
 concurrency:
@@ -32,17 +41,35 @@ permissions:
 env:
   IMAGE: vspoint/php
   PUSH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/master' }}
+  # plánovaný a ruční běh staví načisto, aby se natáhly aktualizace balíčků i bez nové verze PHP
+  NO_CACHE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
 
 jobs:
   matrix:
+    name: Příprava
     runs-on: ubuntu-24.04
     outputs:
       build: ${{ steps.matrix.outputs.build }}
       merge: ${{ steps.matrix.outputs.merge }}
     steps:
+      - name: Kontrola přihlášení k Docker Hubu
+        if: env.PUSH == 'true'
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          missing=""
+          [ -n "$DOCKERHUB_USERNAME" ] || missing="$missing DOCKERHUB_USERNAME"
+          [ -n "$DOCKERHUB_TOKEN" ] || missing="$missing DOCKERHUB_TOKEN"
+          if [ -n "$missing" ]; then
+            echo "::error title=Chybí přihlášení k Docker Hubu::V repozitáři chybí secrets:$missing. Vytvoř na app.docker.com (Account settings -> Personal access tokens) token s právy Read & Write a ulož ho v Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
       - uses: actions/checkout@v7
 
-      - id: matrix
+      - name: Sestavení matice verzí
+        id: matrix
         run: |
           targets='[
             {"target": "development", "suffix": ""},
@@ -72,7 +99,8 @@ jobs:
 
       - uses: docker/setup-buildx-action@v4
 
-      - if: env.PUSH == 'true'
+      - name: Přihlášení k Docker Hubu
+        if: env.PUSH == 'true'
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -85,6 +113,7 @@ jobs:
           target: ${{ matrix.target }}
           platforms: ${{ matrix.platform }}
           pull: true
+          no-cache: ${{ env.NO_CACHE == 'true' }}
           build-args: &build-args |
             PHP_IMAGE=${{ matrix.image }}
             DS_VERSION=${{ matrix.ds }}
@@ -95,7 +124,7 @@ jobs:
           load: true
           tags: test-image
 
-      - name: Smoke test
+      - name: Test image
         run: |
           docker run --rm test-image sh -ec '
             php -v
@@ -110,7 +139,8 @@ jobs:
             php-fpm -t
           '
 
-      - name: Push by digest
+      # použije lokální cache z kroku Build, takže se pushne přesně otestovaný image
+      - name: Push ${{ matrix.arch }}
         id: push
         if: env.PUSH == 'true'
         uses: docker/build-push-action@v7
@@ -119,17 +149,17 @@ jobs:
           target: ${{ matrix.target }}
           platforms: ${{ matrix.platform }}
           build-args: *build-args
-          cache-from: type=gha,scope=${{ matrix.tag }}-${{ matrix.arch }}
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
 
-      - name: Export digest
+      - name: Uložení digestu
         if: env.PUSH == 'true'
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.push.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
 
-      - if: env.PUSH == 'true'
+      - name: Upload digestu
+        if: env.PUSH == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: digests-${{ matrix.tag }}-${{ matrix.arch }}
@@ -140,7 +170,7 @@ jobs:
   merge:
     needs: [matrix, build]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
-    name: push ${{ matrix.tag }}
+    name: Publikace vspoint/php:${{ matrix.tag }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -155,17 +185,42 @@ jobs:
 
       - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/login-action@v4
+      - name: Přihlášení k Docker Hubu
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Create manifest list and push
+      - name: Spojení amd64 + arm64 a push tagu
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create \
             -t "$IMAGE:${{ matrix.tag }}" \
             $(printf "$IMAGE@sha256:%s " *)
 
-      - name: Inspect
-        run: docker buildx imagetools inspect "$IMAGE:${{ matrix.tag }}"
+      - name: Souhrn
+        run: |
+          docker buildx imagetools inspect "$IMAGE:${{ matrix.tag }}"
+          {
+            echo "### \`$IMAGE:${{ matrix.tag }}\`"
+            echo
+            echo "- základ: \`${{ matrix.image }}\`, target: \`${{ matrix.target }}\`"
+            echo "- ds \`${{ matrix.ds }}\`, redis \`${{ matrix.redis }}\`, xdebug \`${{ matrix.xdebug }}\`"
+            echo
+            echo '```'
+            docker buildx imagetools inspect "$IMAGE:${{ matrix.tag }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # GitHub vypíná plánované workflow ve veřejném repozitáři po 60 dnech bez commitu.
+  # Opětovné povolení při každém plánovaném běhu ho udrží aktivní.
+  keepalive:
+    name: Udržení plánovače
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+    steps:
+      - run: gh workflow enable docker.yml -R "$GITHUB_REPOSITORY"
+        env:
+          GH_TOKEN: ${{ github.token }}
