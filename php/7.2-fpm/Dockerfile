@@ -1,53 +1,96 @@
+# VYGENEROVÁNO skriptem generate.py z versions.json - needitovat ručně!
+# vspoint/php:7.2-fpm
+
 FROM php:7.2-fpm
 
-RUN apt-get update \
-	&& apt-get install -y \
+RUN set -eux \
+	&& apt_install() { apt-get update && apt-get install -y --no-install-recommends "$@"; } \
+	&& if ! apt_install \
+		curl \
 		git \
-		zip \
+		libimage-exiftool-perl \
 		unzip \
-		libpng-dev \
-		libpq-dev \
-		libicu-dev \
-		libzip-dev \
+		zip; \
+	then \
+		sed -i -e 's|deb.debian.org|archive.debian.org|g' -e 's|security.debian.org|archive.debian.org|g' -e '/-updates/d' /etc/apt/sources.list; \
+		printf '%s\n' 'Acquire::Check-Valid-Until "false";' 'Acquire::AllowInsecureRepositories "true";' 'APT::Get::AllowUnauthenticated "true";' > /etc/apt/apt.conf.d/99archive; \
+		apt_install \
+		curl \
+		git \
+		libimage-exiftool-perl \
+		unzip \
+		zip; \
+	fi \
+	&& rm -rf /var/lib/apt/lists/*
+
+RUN set -eux \
+	&& savedAptMark="$(apt-mark showmanual)" \
+	&& apt-get update \
+	&& apt-get install -y --no-install-recommends \
+		libfreetype6-dev \
 		libgmp-dev \
+		libicu-dev \
+		libjpeg-dev \
 		libmemcached-dev \
 		libmosquitto-dev \
+		libpng-dev \
+		libpq-dev \
 		librabbitmq-dev \
-	&& ln -s /usr/include/x86_64-linux-gnu/gmp.h /usr/include/gmp.h \
-	&& pecl install ds \
-	&& pecl install redis-4.2.0 \
-	&& pecl install xdebug-2.7.0 \
-	&& pecl install Mosquitto-alpha \
-	&& pecl install memcache \
-	&& pecl install memcached \
-	&& pecl install amqp \
-	&& docker-php-ext-configure \
-		pgsql -with-pgsql=/usr/local/pgsql \
-	&& docker-php-ext-enable \
-		ds \
-		redis \
-		xdebug \
-		mosquitto \
-		memcache \
-		memcached \
-		amqp \
-	&& docker-php-ext-install \
-		bcmath \
-		gd \
-		intl \
-		pdo \
-		pdo_mysql \
-		pdo_pgsql \
-		pgsql \
-		gmp \
-		zip \
-	&& curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-	&& composer global require "hirak/prestissimo:^0.3" \
-	&& apt-get clean -y \
-	&& apt-get autoclean -y \
-	&& apt-get autoremove -y \
-	&& rm -rf /var/lib/apt/lists/* /var/lib/log/* /tmp/* /var/tmp/*
+		libwebp-dev \
+		libzip-dev \
+		zlib1g-dev \
+	&& docker-php-source extract \
+	&& mkdir -p /usr/src/php/ext/amqp /usr/src/php/ext/ds /usr/src/php/ext/memcache /usr/src/php/ext/memcached /usr/src/php/ext/mosquitto /usr/src/php/ext/redis /usr/src/php/ext/xdebug \
+	&& curl -fsSL "https://pecl.php.net/get/amqp-1.10.2.tgz" \
+		| tar -xz -C /usr/src/php/ext/amqp --strip-components=1 \
+	&& curl -fsSL "https://pecl.php.net/get/ds-1.2.9.tgz" \
+		| tar -xz -C /usr/src/php/ext/ds --strip-components=1 \
+	&& curl -fsSL "https://pecl.php.net/get/memcache-4.0.5.2.tgz" \
+		| tar -xz -C /usr/src/php/ext/memcache --strip-components=1 \
+	&& curl -fsSL "https://pecl.php.net/get/memcached-3.1.5.tgz" \
+		| tar -xz -C /usr/src/php/ext/memcached --strip-components=1 \
+	&& curl -fsSL "https://pecl.php.net/get/Mosquitto-0.4.0.tgz" \
+		| tar -xz -C /usr/src/php/ext/mosquitto --strip-components=1 \
+	&& curl -fsSL "https://pecl.php.net/get/redis-4.2.0.tgz" \
+		| tar -xz -C /usr/src/php/ext/redis --strip-components=1 \
+	&& curl -fsSL "https://pecl.php.net/get/xdebug-2.7.0.tgz" \
+		| tar -xz -C /usr/src/php/ext/xdebug --strip-components=1 \
+	&& { [ -e /usr/include/gmp.h ] || ln -s "/usr/include/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/gmp.h" /usr/include/gmp.h; } \
+	&& docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ --with-png-dir=/usr/include/ --with-webp-dir=/usr/include/ \
+	&& docker-php-ext-install -j"$(nproc)" \
+			amqp \
+			bcmath \
+			ds \
+			gd \
+			gmp \
+			intl \
+			memcache \
+			memcached \
+			mosquitto \
+			pdo_mysql \
+			pdo_pgsql \
+			pgsql \
+			redis \
+			xdebug \
+			zip \
+	&& docker-php-source delete \
+	&& apt-mark auto '.*' > /dev/null \
+	&& { [ -z "$savedAptMark" ] || apt-mark manual $savedAptMark > /dev/null; } \
+	&& find /usr/local -type f -name '*.so' -exec ldd '{}' ';' \
+		| awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }' \
+		| sort -u \
+		| xargs -r dpkg-query --search \
+		| cut -d: -f1 \
+		| sort -u \
+		| xargs -r apt-mark manual \
+	&& apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
+	&& rm -rf /var/lib/apt/lists/* \
+	&& rm -rf /tmp/* \
+	&& php -m
 
-RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+RUN ln -sf /usr/bin/composer /usr/local/bin/composer
+
+RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 
 WORKDIR /usr/local/app

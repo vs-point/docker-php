@@ -1,7 +1,7 @@
 # VYGENEROVÁNO skriptem generate.py z versions.json - needitovat ručně!
-# vspoint/php:7.4-fpm-alpine
+# vspoint/php:8.6-fpm-alpine
 
-FROM php:7.4-fpm-alpine
+FROM php:8.6-rc-fpm-alpine
 
 RUN apk add --no-cache \
 		curl \
@@ -11,63 +11,43 @@ RUN apk add --no-cache \
 		unzip \
 		zip
 
+COPY patch-ds.sh /usr/local/bin/patch-ds.sh
+
 RUN set -eux \
 	&& apk add --no-cache --virtual .build-deps \
 		$PHPIZE_DEPS \
 		pax-utils \
-		cyrus-sasl-dev \
 		freetype-dev \
 		gmp-dev \
 		icu-dev \
 		libjpeg-turbo-dev \
-		libmemcached-dev \
 		libpng-dev \
-		libssh2-dev \
 		libwebp-dev \
-		libxml2-dev \
 		libzip-dev \
 		linux-headers \
-		mosquitto-dev \
 		postgresql-dev \
-		rabbitmq-c-dev \
 		zlib-dev \
 	&& docker-php-source extract \
-	&& mkdir -p /usr/src/php/ext/amqp /usr/src/php/ext/ds /usr/src/php/ext/memcache /usr/src/php/ext/memcached /usr/src/php/ext/mosquitto /usr/src/php/ext/redis /usr/src/php/ext/ssh2 /usr/src/php/ext/xdebug \
-	&& curl -fsSL "https://pecl.php.net/get/amqp-1.10.2.tgz" \
-		| tar -xz -C /usr/src/php/ext/amqp --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/ds-1.5.0.tgz" \
+	&& mkdir -p /usr/src/php/ext/ds /usr/src/php/ext/redis /usr/src/php/ext/xdebug \
+	&& curl -fsSL "https://pecl.php.net/get/ds-1.6.0.tgz" \
 		| tar -xz -C /usr/src/php/ext/ds --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/memcache-4.0.5.2.tgz" \
-		| tar -xz -C /usr/src/php/ext/memcache --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/memcached-3.1.5.tgz" \
-		| tar -xz -C /usr/src/php/ext/memcached --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/Mosquitto-0.4.0.tgz" \
-		| tar -xz -C /usr/src/php/ext/mosquitto --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/redis-5.0.0.tgz" \
+	&& curl -fsSL "https://github.com/phpredis/phpredis/archive/57b584f676a504842d86c4dafb6b8f9abaf21ba2.tar.gz" \
 		| tar -xz -C /usr/src/php/ext/redis --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/ssh2-1.2.tgz" \
-		| tar -xz -C /usr/src/php/ext/ssh2 --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/xdebug-2.9.6.tgz" \
+	&& curl -fsSL "https://github.com/xdebug/xdebug/archive/3.6.0alpha1.tar.gz" \
 		| tar -xz -C /usr/src/php/ext/xdebug --strip-components=1 \
+	&& /usr/local/bin/patch-ds.sh \
 	&& docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
 	&& docker-php-ext-install -j"$(nproc)" \
-			amqp \
 			bcmath \
 			ds \
 			exif \
 			gd \
 			gmp \
 			intl \
-			memcache \
-			memcached \
-			mosquitto \
-			mysqli \
 			pdo_mysql \
 			pdo_pgsql \
 			pgsql \
 			redis \
-			soap \
-			ssh2 \
 			xdebug \
 			zip \
 	&& docker-php-source delete \
@@ -79,7 +59,7 @@ RUN set -eux \
 	)" \
 	&& apk add --no-cache --virtual .php-ext-rundeps $runDeps \
 	&& apk del .build-deps \
-	&& rm -rf /tmp/* \
+	&& rm -rf /tmp/* /usr/local/bin/patch-ds.sh \
 	&& php -m
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

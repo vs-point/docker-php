@@ -1,35 +1,43 @@
 # vspoint/php
 
-PHP-FPM image na Alpine pro `linux/amd64` i `linux/arm64` (Apple Silicon).
+PHP-FPM image pro `linux/amd64` i `linux/arm64` (Apple Silicon).
 
-| Tag                                   | php.ini     | Xdebug |
-|---------------------------------------|-------------|--------|
-| `vspoint/php:8.5-fpm-alpine`          | development | ano    |
-| `vspoint/php:8.5-fpm-alpine-production` | production  | ne     |
-| `vspoint/php:8.6-fpm-alpine`          | development | ano    |
-| `vspoint/php:8.6-fpm-alpine-production` | production  | ne     |
+| Tag | Základ | Podpora |
+|-----|--------|---------|
+| `8.6-fpm-alpine`, `8.6-fpm-alpine-production` | `php:8.6-rc-fpm-alpine` | ano (RC) |
+| `8.5-fpm-alpine`, `8.5-fpm-alpine-production` | `php:8.5-fpm-alpine` | ano |
+| `8.0-fpm-alpine`, `8.0-fpm-alpine-production` | `php:8.0-fpm-alpine` | eol |
+| `7.4-fpm-alpine`, `7.4-fpm-alpine-production` | `php:7.4-fpm-alpine` | eol |
+| `7.3-fpm-alpine`, `7.3-fpm-alpine-production`, `7.3-fpm-adb-alpine` | `php:7.3-fpm-alpine` | eol |
+| `7.3-fpm`, `7.3-fpm-production` | `php:7.3-fpm` (Debian) | eol |
+| `7.2-fpm-alpine`, `7.2-fpm` | `php:7.2-fpm(-alpine)` | eol |
+| `7.1-fpm-alpine` | `php:7.1-fpm-alpine` | eol |
+| `5.6-fpm-alpine`, `5.6-fpm` | `php:5.6-fpm(-alpine)` | eol |
 
-Rozšíření: bcmath, ds, exif, gd (freetype, jpeg, webp), gmp, intl (plná ICU data), pdo_mysql,
-pdo_pgsql, pgsql, redis, zip. Dále composer 2, git, curl, zip/unzip a exiftool.
+Varianty:
+- bez přípony – `php.ini-development` + xdebug
+- `-production` – `php.ini-production` + opcache, bez xdebugu
+- `-adb` – jako development + `adb` (android-tools)
+
+Rozšíření jednotlivých tagů vypíše `./generate.py --list`. Ve všech je navíc composer 2,
+git, curl, zip/unzip a exiftool.
 
 ## Jak to funguje
 
-- `php/fpm-alpine/Dockerfile` – jeden Dockerfile pro všechny verze, targety `production` a `development`.
-- `versions.json` – verze PHP a připnuté verze (git ref) rozšíření ds, redis a xdebug.
-- `.github/workflows/docker.yml` – postaví všechny image nativně na amd64 i arm64, otestuje je
-  a pushne na Docker Hub. Spouští se při pushi do `master`, automaticky 1. den v měsíci
-  (načisto bez cache, aby se natáhla nejnovější patch verze PHP a bezpečnostní opravy) a ručně
-  přes Actions → Docker → Run workflow. Pull requesty se jen staví a testují.
-- `build.sh` – lokální build a test (bez pushe), např. `./build.sh 8.6`.
+- `versions.json` – jediné místo, kde se mění verze PHP, varianty a rozšíření (a jejich verze).
+- `generate.py` – z `versions.json` vygeneruje `php/<tag>/Dockerfile`. Ty se needitují ručně;
+  po změně `versions.json` spusť `./generate.py` a commitni i vygenerované soubory.
+  Popis všech položek je na začátku `generate.py`.
+- `.github/workflows/docker.yml` – postaví image nativně na amd64 i arm64, otestuje je
+  a pushne na Docker Hub:
+  - po pushi do `master` ty image, jejichž Dockerfile se změnil,
+  - automaticky 1. den v měsíci podporované (ne `eol`) verze načisto bez cache,
+    aby měly nejnovější patch verzi PHP a bezpečnostní opravy,
+  - ručně přes Actions → Docker → Run workflow (prázdné = podporované, `all` = vše,
+    nebo konkrétní tagy).
 
-## Napojení na Docker Hub
+  Pull requesty se jen staví a testují.
+- `build.sh` – lokální build a test bez pushe, např. `./build.sh 8.6-fpm-alpine`.
+- `patch-ds.sh` – úprava rozšíření ds 1.x pro PHP 8.6.
 
-1. Na https://app.docker.com/accounts/vitek499/settings/personal-access-tokens → **Generate new token**,
-   access permissions **Read & Write** (účet musí mít právo zápisu do organizace `vspoint`).
-2. V GitHubu Settings → Secrets and variables → Actions nastav secrets
-   `DOCKERHUB_USERNAME` (Docker Hub uživatel) a `DOCKERHUB_TOKEN` (vygenerovaný token),
-   nebo z terminálu `gh secret set DOCKERHUB_TOKEN -R vs-point/docker-php`.
-
-Nová verze PHP = nová položka ve `versions.json`.
-
-Adresáře `php/5.6-*` až `php/8.0-*` jsou staré, už se nestaví.
+Nová verze PHP = nová položka ve `versions.json` + `./generate.py`.

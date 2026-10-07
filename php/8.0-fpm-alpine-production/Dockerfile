@@ -1,80 +1,67 @@
+# VYGENEROVÁNO skriptem generate.py z versions.json - needitovat ručně!
+# vspoint/php:8.0-fpm-alpine-production
+
 FROM php:8.0-fpm-alpine
 
-RUN apk update \
-	&& apk add --no-cache --allow-untrusted --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ \
-		autoconf \
+RUN apk add --no-cache \
 		curl \
-		g++ \
 		git \
-		gnu-libiconv \
-		icu-dev \
-		libpng-dev \
-		libtool \
-		libzip-dev \
-		make \
-		postgresql-dev \
-		unzip \
-		zip \
-		gmp-dev \
-		libmemcached-dev \
-		rabbitmq-c-dev \
-		libssh2 \
-		libssh2-dev \
-		mosquitto-dev \
+		icu-data-full \
 		perl-image-exiftool \
-        	jpeg-dev \
-        	freetype \
-        	freetype-dev \
-       	libjpeg-turbo-dev \
-       	libwebp \
-       	libwebp-dev
+		unzip \
+		zip
 
-ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
+RUN set -eux \
+	&& apk add --no-cache --virtual .build-deps \
+		$PHPIZE_DEPS \
+		pax-utils \
+		freetype-dev \
+		gmp-dev \
+		icu-dev \
+		libjpeg-turbo-dev \
+		libpng-dev \
+		libwebp-dev \
+		libzip-dev \
+		postgresql-dev \
+		zlib-dev \
+	&& docker-php-source extract \
+	&& mkdir -p /usr/src/php/ext/ds /usr/src/php/ext/memcache /usr/src/php/ext/redis \
+	&& curl -fsSL "https://pecl.php.net/get/ds-1.3.0.tgz" \
+		| tar -xz -C /usr/src/php/ext/ds --strip-components=1 \
+	&& curl -fsSL "https://pecl.php.net/get/memcache-8.0.tgz" \
+		| tar -xz -C /usr/src/php/ext/memcache --strip-components=1 \
+	&& curl -fsSL "https://pecl.php.net/get/redis-5.3.2.tgz" \
+		| tar -xz -C /usr/src/php/ext/redis --strip-components=1 \
+	&& docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+	&& docker-php-ext-install -j"$(nproc)" \
+			bcmath \
+			ds \
+			exif \
+			gd \
+			gmp \
+			intl \
+			memcache \
+			opcache \
+			pdo_mysql \
+			pdo_pgsql \
+			pgsql \
+			redis \
+			zip \
+	&& docker-php-source delete \
+	&& runDeps="$( \
+		scanelf --needed --nobanner --format '%n#p' --recursive /usr/local/lib/php/extensions \
+			| tr ',' '\n' \
+			| sort -u \
+			| awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
+	)" \
+	&& apk add --no-cache --virtual .php-ext-rundeps $runDeps \
+	&& apk del .build-deps \
+	&& rm -rf /tmp/* \
+	&& php -m
 
-RUN docker-php-ext-configure gd \
-        --enable-gd \
-        --with-freetype \
-        --with-jpeg \
-        --with-webp
-        
-RUN pecl install ds-1.3.0 \
-	&& pecl install redis-5.3.2 \
-#	&& pecl install Mosquitto-0.4.0 \
-	&& pecl install memcache-8.0 \
-#	&& pecl install memcached-3.1.5 \
-#	&& pecl install amqp-1.10.2 \
-#	&& pecl install ssh2-1.2 \
-#	&& echo "extension=ssh2.so" >> /usr/local/etc/php/conf.d/docker-php-ext-ssh2.ini \
-	&& docker-php-ext-enable \
-		ds \
-		redis \
-#		mosquitto \
-		memcache \
-#		memcached \
-#		amqp \
-	&& docker-php-ext-install \
-		bcmath \
-		gd \
-		intl \
-		pdo \
-		pdo_mysql \
-		pdo_pgsql \
-		pgsql \
-		gmp \
-		zip \
-		exif \
-		gd \
-	&& curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-	&& composer self-update --snapshot
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+RUN ln -sf /usr/bin/composer /usr/local/bin/composer
 
-RUN apk del \
-		autoconf \
-		g++ \
-		libtool \
-		make \
-	&& rm -rf /var/cache/apk/* \
-	&& rm -rf /tmp/*
-
-RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 WORKDIR /usr/local/app

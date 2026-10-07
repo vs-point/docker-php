@@ -1,78 +1,79 @@
+# VYGENEROVÁNO skriptem generate.py z versions.json - needitovat ručně!
+# vspoint/php:5.6-fpm-alpine
+
 FROM php:5.6-fpm-alpine
 
-RUN apk update \
-	&& apk add --no-cache --allow-untrusted --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ \
-		autoconf \
+RUN apk add --no-cache \
 		curl \
-		g++ \
 		git \
-		gnu-libiconv \
-		icu-dev \
-		libpng-dev \
-		libtool \
-		libzip-dev \
-		make \
-		postgresql-dev \
-		unzip \
-		zip \
-		gmp-dev \
-		libmemcached-dev \
-		rabbitmq-c-dev \
-		libssh2 \
-		libssh2-dev \
-		mosquitto-dev \
 		perl-image-exiftool \
-        	jpeg-dev \
-        	freetype \
-        	freetype-dev \
-       	libjpeg-turbo-dev \
-       	libwebp \
-       	libwebp-dev
+		unzip \
+		zip
 
-ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
+RUN set -eux \
+	&& apk add --no-cache --virtual .build-deps \
+		$PHPIZE_DEPS \
+		pax-utils \
+		cyrus-sasl-dev \
+		freetype-dev \
+		gmp-dev \
+		icu-dev \
+		libjpeg-turbo-dev \
+		libmemcached-dev \
+		libpng-dev \
+		libssh2-dev \
+		libwebp-dev \
+		libzip-dev \
+		mosquitto-dev \
+		postgresql-dev \
+		rabbitmq-c-dev \
+		zlib-dev \
+	&& docker-php-source extract \
+	&& mkdir -p /usr/src/php/ext/amqp /usr/src/php/ext/memcache /usr/src/php/ext/memcached /usr/src/php/ext/mosquitto /usr/src/php/ext/redis /usr/src/php/ext/ssh2 \
+	&& curl -fsSL "https://pecl.php.net/get/amqp-1.10.2.tgz" \
+		| tar -xz -C /usr/src/php/ext/amqp --strip-components=1 \
+	&& curl -fsSL "https://pecl.php.net/get/memcache-2.2.7.tgz" \
+		| tar -xz -C /usr/src/php/ext/memcache --strip-components=1 \
+	&& curl -fsSL "https://pecl.php.net/get/memcached-2.2.0.tgz" \
+		| tar -xz -C /usr/src/php/ext/memcached --strip-components=1 \
+	&& curl -fsSL "https://pecl.php.net/get/Mosquitto-0.4.0.tgz" \
+		| tar -xz -C /usr/src/php/ext/mosquitto --strip-components=1 \
+	&& curl -fsSL "https://pecl.php.net/get/redis-4.2.0.tgz" \
+		| tar -xz -C /usr/src/php/ext/redis --strip-components=1 \
+	&& curl -fsSL "https://pecl.php.net/get/ssh2-0.13.tgz" \
+		| tar -xz -C /usr/src/php/ext/ssh2 --strip-components=1 \
+	&& docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ --with-png-dir=/usr/include/ \
+	&& docker-php-ext-install -j"$(nproc)" \
+			amqp \
+			bcmath \
+			gd \
+			gmp \
+			intl \
+			memcache \
+			memcached \
+			mosquitto \
+			mysqli \
+			pdo_mysql \
+			pdo_pgsql \
+			pgsql \
+			redis \
+			ssh2 \
+			zip \
+	&& docker-php-source delete \
+	&& runDeps="$( \
+		scanelf --needed --nobanner --format '%n#p' --recursive /usr/local/lib/php/extensions \
+			| tr ',' '\n' \
+			| sort -u \
+			| awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
+	)" \
+	&& apk add --no-cache --virtual .php-ext-rundeps $runDeps \
+	&& apk del .build-deps \
+	&& rm -rf /tmp/* \
+	&& php -m
 
-RUN docker-php-ext-configure gd \
-        --with-freetype-dir=/usr/lib/ \
-        --with-png-dir=/usr/lib/ \
-        --with-jpeg-dir=/usr/lib/ \
-        --with-webp-dir=/usr/lib/ \
-        --with-gd
-        
-RUN pecl install redis-4.2.0 \
-	&& pecl install Mosquitto-0.4.0 \
-	&& pecl install memcache-2.2.7 \
-	&& pecl install memcached-2.2.0 \
-	&& pecl install amqp-1.10.2 \
-	&& pecl install ssh2-0.13 \
-	&& echo "extension=ssh2.so" >> /usr/local/etc/php/conf.d/docker-php-ext-ssh2.ini \
-	&& docker-php-ext-enable \
-		redis \
-		mosquitto \
-		memcache \
-		memcached \
-		amqp \
-	&& docker-php-ext-install \
-		bcmath \
-		gd \
-		intl \
-		pdo \
-		mysqli \
-		pdo_mysql \
-		pdo_pgsql \
-		pgsql \
-		gmp \
-		zip \
-	&& curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-	&& composer self-update --snapshot
+COPY --from=composer:2.2 /usr/bin/composer /usr/bin/composer
+RUN ln -sf /usr/bin/composer /usr/local/bin/composer
 
-RUN apk del \
-		autoconf \
-		g++ \
-		libtool \
-		make \
-	&& rm -rf /var/cache/apk/* \
-	&& rm -rf /tmp/*
-
-RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 
 WORKDIR /usr/local/app

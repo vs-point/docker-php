@@ -1,35 +1,46 @@
 name: Docker
 
-# Staví vspoint/php:<verze>-fpm-alpine(-production) pro linux/amd64 i linux/arm64
-# podle versions.json a pushuje je na Docker Hub.
+# Staví image vspoint/php z php/<tag>/Dockerfile (generuje je generate.py z versions.json)
+# pro linux/amd64 i linux/arm64 a pushuje je na Docker Hub.
 #
-# Spouští se:
-#   - po pushi do master (změna Dockerfile, versions.json nebo tohoto workflow)
-#   - automaticky 1. den v měsíci - přestaví image načisto (bez cache) z aktuálních
-#     základních image php:*, aby obsahovaly nejnovější patch verzi PHP a bezpečnostní opravy
-#   - ručně: Actions -> Docker -> Run workflow
+# Co se staví:
+#   - push do master / pull request: jen image, jejichž php/<tag>/ se změnil
+#     (změna tohoto workflow = všechny podporované)
+#   - automaticky 1. den v měsíci: všechny podporované (ne "eol") verze načisto bez cache,
+#     aby obsahovaly nejnovější patch verzi PHP a bezpečnostní opravy základních image
+#   - ručně (Actions -> Docker -> Run workflow): podporované, "all" = úplně všechny,
+#     nebo vyjmenované tagy
 # Pull requesty se jen staví a testují, nic se nepushuje.
 #
 # Potřebné secrets v repozitáři (Settings -> Secrets and variables -> Actions):
 #   DOCKERHUB_USERNAME - uživatel Docker Hubu s právem zápisu do vspoint/php
-#   DOCKERHUB_TOKEN    - jeho Personal access token se scope "Read & Write"
+#   DOCKERHUB_TOKEN    - jeho Personal access token s právy "Read & Write"
 
 on:
   push:
     branches: [master]
     paths:
-      - 'php/fpm-alpine/**'
+      - 'php/**'
       - 'versions.json'
+      - 'generate.py'
+      - 'patch-ds.sh'
       - '.github/workflows/docker.yml'
   pull_request:
     paths:
-      - 'php/fpm-alpine/**'
+      - 'php/**'
       - 'versions.json'
+      - 'generate.py'
+      - 'patch-ds.sh'
       - '.github/workflows/docker.yml'
   schedule:
     # 1. den v měsíci ve 3:00 UTC
     - cron: '0 3 1 * *'
   workflow_dispatch:
+    inputs:
+      tags:
+        description: 'Tagy k sestavení oddělené mezerou (např. "8.5-fpm-alpine 7.4-fpm-alpine"), "all" = všechny, prázdné = podporované verze'
+        required: false
+        default: ''
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -67,27 +78,72 @@ jobs:
           fi
 
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
-      - name: Sestavení matice verzí
-        id: matrix
+      - name: Kontrola vygenerovaných Dockerfilů
         run: |
-          targets='[
-            {"target": "development", "suffix": ""},
-            {"target": "production", "suffix": "-production"}
-          ]'
-          platforms='[
+          python3 generate.py > /dev/null
+          if [ -n "$(git status --porcelain)" ]; then
+            git status --short
+            echo "::error title=Neaktuální Dockerfily::Soubory v php/ neodpovídají versions.json. Spusť ./generate.py a commitni výsledek."
+            exit 1
+          fi
+
+      - name: Výběr image
+        id: matrix
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_TAGS: ${{ inputs.tags }}
+          BEFORE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          all=$(python3 generate.py --list)
+          supported=$(jq -c '[.[] | select(.eol | not) | .tag]' <<< "$all")
+
+          case "$EVENT" in
+            schedule)
+              tags="$supported" ;;
+            workflow_dispatch)
+              if [ -z "$INPUT_TAGS" ]; then
+                tags="$supported"
+              elif [ "$INPUT_TAGS" = all ]; then
+                tags=$(jq -c '[.[].tag]' <<< "$all")
+              else
+                tags=$(jq -c -R 'split(" ") | map(select(. != ""))' <<< "$INPUT_TAGS")
+              fi ;;
+            *)
+              if [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+                tags="$supported"
+              else
+                changed=$(git diff --name-only "$BEFORE" "$GITHUB_SHA")
+                tags=$(grep -oP '^php/\K[^/]+(?=/)' <<< "$changed" | sort -u | jq -c -R -s 'split("\n") | map(select(. != ""))')
+                if grep -q '^.github/workflows/docker.yml$' <<< "$changed"; then
+                  tags=$(jq -c -n --argjson a "$tags" --argjson b "$supported" '$a + $b | unique')
+                fi
+              fi ;;
+          esac
+
+          unknown=$(jq -r -n --argjson t "$tags" --argjson all "$all" '$t - [$all[].tag] | join(" ")')
+          if [ -n "$unknown" ]; then
+            echo "::error title=Neznámý tag::$unknown (tagy jsou v ./generate.py --list)"
+            exit 1
+          fi
+
+          merge=$(jq -c -n --argjson t "$tags" --argjson all "$all" '[$all[] | select(.tag as $x | $t | index($x))]')
+          build=$(jq -c -n --argjson m "$merge" '[$m[] as $m | (
             {"platform": "linux/amd64", "arch": "amd64", "runner": "ubuntu-24.04"},
             {"platform": "linux/arm64", "arch": "arm64", "runner": "ubuntu-24.04-arm"}
-          ]'
-          merge=$(jq -c --argjson t "$targets" \
-            '[.[] as $v | $t[] as $t | $v + $t + {tag: ($v.php + "-fpm-alpine" + $t.suffix)}]' versions.json)
-          build=$(jq -c -n --argjson m "$merge" --argjson p "$platforms" \
-            '[$m[] as $m | $p[] as $p | $m + $p]')
+          ) as $p | $m + $p]')
+
+          echo "Stavím: $(jq -r '[.[].tag] | join(" ")' <<< "$merge")"
+          echo "### Image k sestavení" >> "$GITHUB_STEP_SUMMARY"
+          jq -r '.[] | "- `\(.tag)`"' <<< "$merge" >> "$GITHUB_STEP_SUMMARY"
           echo "merge=$merge" >> "$GITHUB_OUTPUT"
           echo "build=$build" >> "$GITHUB_OUTPUT"
 
   build:
     needs: matrix
+    if: needs.matrix.outputs.build != '[]'
     name: ${{ matrix.tag }} (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -109,32 +165,27 @@ jobs:
       - name: Build
         uses: docker/build-push-action@v7
         with:
-          context: php/fpm-alpine
-          target: ${{ matrix.target }}
+          context: php/${{ matrix.tag }}
           platforms: ${{ matrix.platform }}
           pull: true
           no-cache: ${{ env.NO_CACHE == 'true' }}
-          build-args: &build-args |
-            PHP_IMAGE=${{ matrix.image }}
-            DS_VERSION=${{ matrix.ds }}
-            REDIS_VERSION=${{ matrix.redis }}
-            XDEBUG_VERSION=${{ matrix.xdebug }}
           cache-from: type=gha,scope=${{ matrix.tag }}-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.tag }}-${{ matrix.arch }}
           load: true
           tags: test-image
 
       - name: Test image
+        env:
+          EXTENSIONS: ${{ matrix.extensions }}
         run: |
-          docker run --rm test-image sh -ec '
+          docker run --rm -e EXTENSIONS test-image sh -ec '
             php -v
-            for ext in bcmath ds exif gd gmp intl pdo_mysql pdo_pgsql pgsql redis zip; do
+            errors=$(php -m 2>&1 >/dev/null; php -m | grep -iE "warning|error" || true)
+            [ -z "$errors" ] || { echo "$errors"; exit 1; }
+            for ext in $EXTENSIONS; do
+              [ "$ext" = opcache ] && ext="Zend OPcache"
               php -m | grep -qix "$ext" || { echo "chybí rozšíření $ext"; exit 1; }
             done
-            if [ "${{ matrix.target }}" = development ]; then
-              php -m | grep -qix xdebug || { echo "chybí xdebug"; exit 1; }
-            fi
-            php -r "echo (new NumberFormatter(\"cs_CZ\", NumberFormatter::CURRENCY))->formatCurrency(1234.5, \"CZK\"), PHP_EOL;"
             composer --version
             php-fpm -t
           '
@@ -145,10 +196,8 @@ jobs:
         if: env.PUSH == 'true'
         uses: docker/build-push-action@v7
         with:
-          context: php/fpm-alpine
-          target: ${{ matrix.target }}
+          context: php/${{ matrix.tag }}
           platforms: ${{ matrix.platform }}
-          build-args: *build-args
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Uložení digestu
@@ -169,7 +218,8 @@ jobs:
 
   merge:
     needs: [matrix, build]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    # i když některý build selže, ostatní image se publikují
+    if: ${{ !cancelled() && needs.matrix.result == 'success' && needs.matrix.outputs.merge != '[]' && github.event_name != 'pull_request' && github.ref == 'refs/heads/master' }}
     name: Publikace vspoint/php:${{ matrix.tag }}
     runs-on: ubuntu-24.04
     strategy:
@@ -178,10 +228,13 @@ jobs:
         include: ${{ fromJSON(needs.matrix.outputs.merge) }}
     steps:
       - uses: actions/download-artifact@v8
+        continue-on-error: true
         with:
           path: /tmp/digests
           pattern: digests-${{ matrix.tag }}-*
           merge-multiple: true
+
+      - run: mkdir -p /tmp/digests
 
       - uses: docker/setup-buildx-action@v4
 
@@ -194,18 +247,21 @@ jobs:
       - name: Spojení amd64 + arm64 a push tagu
         working-directory: /tmp/digests
         run: |
+          if [ "$(find . -type f | wc -l)" -ne 2 ]; then
+            echo "::error title=${{ matrix.tag }}::Build pro některou architekturu selhal, tag se nepublikuje."
+            exit 1
+          fi
+          # shellcheck disable=SC2046
           docker buildx imagetools create \
             -t "$IMAGE:${{ matrix.tag }}" \
             $(printf "$IMAGE@sha256:%s " *)
 
       - name: Souhrn
         run: |
-          docker buildx imagetools inspect "$IMAGE:${{ matrix.tag }}"
           {
             echo "### \`$IMAGE:${{ matrix.tag }}\`"
             echo
-            echo "- základ: \`${{ matrix.image }}\`, target: \`${{ matrix.target }}\`"
-            echo "- ds \`${{ matrix.ds }}\`, redis \`${{ matrix.redis }}\`, xdebug \`${{ matrix.xdebug }}\`"
+            echo "Rozšíření: ${{ matrix.extensions }}"
             echo
             echo '```'
             docker buildx imagetools inspect "$IMAGE:${{ matrix.tag }}"
