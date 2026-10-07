@@ -116,7 +116,9 @@ jobs:
                 tags="$supported"
               else
                 changed=$(git diff --name-only "$BEFORE" "$GITHUB_SHA")
-                tags=$(grep -oP '^php/\K[^/]+(?=/)' <<< "$changed" | sort -u | jq -c -R -s 'split("\n") | map(select(. != ""))')
+                # jen existující tagy - smazané nebo přejmenované adresáře se ignorují
+                tags=$(grep -oP '^php/\K[^/]+(?=/)' <<< "$changed" | sort -u \
+                  | jq -c -R -s --argjson all "$all" 'split("\n") | map(select(. as $t | [$all[].tag] | index($t)))')
                 if grep -q '^.github/workflows/docker.yml$' <<< "$changed"; then
                   tags=$(jq -c -n --argjson a "$tags" --argjson b "$supported" '$a + $b | unique')
                 fi
