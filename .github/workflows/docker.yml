@@ -213,7 +213,7 @@ jobs:
         if: env.PUSH == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: digests-${{ matrix.tag }}-${{ matrix.arch }}
+          name: digests_${{ matrix.tag }}_${{ matrix.arch }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -233,7 +233,7 @@ jobs:
         continue-on-error: true
         with:
           path: /tmp/digests
-          pattern: digests-${{ matrix.tag }}-*
+          pattern: digests_${{ matrix.tag }}_*
           merge-multiple: true
 
       - run: mkdir -p /tmp/digests
