@@ -1,0 +1,171 @@
+name: Docker
+
+# Staví vspoint/php:<verze>-fpm-alpine(-production) pro linux/amd64 i linux/arm64
+# podle versions.json a pushuje je na Docker Hub.
+#
+# Potřebné secrets v repozitáři: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'php/fpm-alpine/**'
+      - 'versions.json'
+      - '.github/workflows/docker.yml'
+  pull_request:
+    paths:
+      - 'php/fpm-alpine/**'
+      - 'versions.json'
+      - '.github/workflows/docker.yml'
+  schedule:
+    # každé pondělí ráno - bezpečnostní aktualizace základních image
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: vspoint/php
+  PUSH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/master' }}
+
+jobs:
+  matrix:
+    runs-on: ubuntu-24.04
+    outputs:
+      build: ${{ steps.matrix.outputs.build }}
+      merge: ${{ steps.matrix.outputs.merge }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: matrix
+        run: |
+          targets='[
+            {"target": "development", "suffix": ""},
+            {"target": "production", "suffix": "-production"}
+          ]'
+          platforms='[
+            {"platform": "linux/amd64", "arch": "amd64", "runner": "ubuntu-24.04"},
+            {"platform": "linux/arm64", "arch": "arm64", "runner": "ubuntu-24.04-arm"}
+          ]'
+          merge=$(jq -c --argjson t "$targets" \
+            '[.[] as $v | $t[] as $t | $v + $t + {tag: ($v.php + "-fpm-alpine" + $t.suffix)}]' versions.json)
+          build=$(jq -c -n --argjson m "$merge" --argjson p "$platforms" \
+            '[$m[] as $m | $p[] as $p | $m + $p]')
+          echo "merge=$merge" >> "$GITHUB_OUTPUT"
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: matrix
+    name: ${{ matrix.tag }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.matrix.outputs.build) }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - if: env.PUSH == 'true'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build
+        uses: docker/build-push-action@v7
+        with:
+          context: php/fpm-alpine
+          target: ${{ matrix.target }}
+          platforms: ${{ matrix.platform }}
+          pull: true
+          build-args: &build-args |
+            PHP_IMAGE=${{ matrix.image }}
+            DS_VERSION=${{ matrix.ds }}
+            REDIS_VERSION=${{ matrix.redis }}
+            XDEBUG_VERSION=${{ matrix.xdebug }}
+          cache-from: type=gha,scope=${{ matrix.tag }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.tag }}-${{ matrix.arch }}
+          load: true
+          tags: test-image
+
+      - name: Smoke test
+        run: |
+          docker run --rm test-image sh -ec '
+            php -v
+            for ext in bcmath ds exif gd gmp intl pdo_mysql pdo_pgsql pgsql redis zip; do
+              php -m | grep -qix "$ext" || { echo "chybí rozšíření $ext"; exit 1; }
+            done
+            if [ "${{ matrix.target }}" = development ]; then
+              php -m | grep -qix xdebug || { echo "chybí xdebug"; exit 1; }
+            fi
+            php -r "echo (new NumberFormatter(\"cs_CZ\", NumberFormatter::CURRENCY))->formatCurrency(1234.5, \"CZK\"), PHP_EOL;"
+            composer --version
+            php-fpm -t
+          '
+
+      - name: Push by digest
+        id: push
+        if: env.PUSH == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: php/fpm-alpine
+          target: ${{ matrix.target }}
+          platforms: ${{ matrix.platform }}
+          build-args: *build-args
+          cache-from: type=gha,scope=${{ matrix.tag }}-${{ matrix.arch }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        if: env.PUSH == 'true'
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.push.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - if: env.PUSH == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: digests-${{ matrix.tag }}-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    needs: [matrix, build]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    name: push ${{ matrix.tag }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.matrix.outputs.merge) }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: /tmp/digests
+          pattern: digests-${{ matrix.tag }}-*
+          merge-multiple: true
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            -t "$IMAGE:${{ matrix.tag }}" \
+            $(printf "$IMAGE@sha256:%s " *)
+
+      - name: Inspect
+        run: docker buildx imagetools inspect "$IMAGE:${{ matrix.tag }}"

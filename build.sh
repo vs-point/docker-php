@@ -1,53 +1,41 @@
 #!/usr/bin/env bash
+# Lokální build a test image podle versions.json (stejně jako GitHub Actions, ale jen pro
+# platformu tohoto počítače a bez pushe). Publikování na Docker Hub dělá
+# .github/workflows/docker.yml.
+#
+# Použití: ./build.sh            # všechny verze
+#          ./build.sh 8.6        # jen vybrané verze
+set -euo pipefail
 
-docker image rm php:5.6-fpm-alpine
+cd "$(dirname "$0")"
 
-docker build --no-cache -t vspoint/php:5.6-fpm-alpine php/5.6-fpm-alpine/.
-docker push vspoint/php:5.6-fpm-alpine
+versions=("$@")
+if [ ${#versions[@]} -eq 0 ]; then
+	mapfile -t versions < <(jq -r '.[].php' versions.json)
+fi
 
-docker image rm php:7.1-fpm-alpine
-docker build --no-cache -t vspoint/php:7.1-fpm-alpine php/7.1-fpm-alpine/.
-docker push vspoint/php:7.1-fpm-alpine
+for php in "${versions[@]}"; do
+	cfg=$(jq -ec --arg php "$php" '.[] | select(.php == $php)' versions.json) || {
+		echo "Verze $php není ve versions.json" >&2
+		exit 1
+	}
 
-docker image rm php:7.2-fpm-alpine
-docker build --no-cache -t vspoint/php:7.2-fpm-alpine php/7.2-fpm-alpine/.
-docker push vspoint/php:7.2-fpm-alpine
+	for target in development production; do
+		tag="vspoint/php:${php}-fpm-alpine"
+		[ "$target" = production ] && tag+="-production"
 
+		echo "==> $tag"
+		docker buildx build \
+			--pull \
+			--load \
+			--target "$target" \
+			--build-arg PHP_IMAGE="$(jq -r .image <<<"$cfg")" \
+			--build-arg DS_VERSION="$(jq -r .ds <<<"$cfg")" \
+			--build-arg REDIS_VERSION="$(jq -r .redis <<<"$cfg")" \
+			--build-arg XDEBUG_VERSION="$(jq -r .xdebug <<<"$cfg")" \
+			-t "$tag" \
+			php/fpm-alpine
 
-docker image rm php:7.3-fpm-alpine
-
-docker build --no-cache -t vspoint/php:7.3-fpm-alpine php/7.3-fpm-alpine/.
-docker push vspoint/php:7.3-fpm-alpine
-
-docker build --no-cache -t vspoint/php:7.3-fpm-adb-alpine php/7.3-fpm-adb-alpine/.
-docker push vspoint/php:7.3-fpm-adb-alpine
-
-docker build --no-cache -t vspoint/php:7.3-fpm-alpine-production php/7.3-fpm-alpine-production/.
-docker push vspoint/php:7.3-fpm-alpine-production
-
-
-docker image rm php:7.4-fpm-alpine
-
-docker build --no-cache -t vspoint/php:7.4-fpm-alpine php/7.4-fpm-alpine/.
-docker push vspoint/php:7.4-fpm-alpine
-
-docker build --no-cache -t vspoint/php:7.4-fpm-alpine-production php/7.4-fpm-alpine-production/.
-docker push vspoint/php:7.4-fpm-alpine-production
-
-
-docker image rm php:8.0-fpm-alpine
-
-docker build --no-cache -t vspoint/php:8.0-fpm-alpine php/8.0-fpm-alpine/.
-docker push vspoint/php:8.0-fpm-alpine
-
-docker build --no-cache -t vspoint/php:8.0-fpm-alpine-production php/8.0-fpm-alpine-production/.
-docker push vspoint/php:8.0-fpm-alpine-production
-
-
-docker image rm php:8.5-fpm-alpine
-
-docker buildx build --no-cache -t vspoint/php:8.5-fpm-alpine php/8.5-fpm-alpine/.
-docker push vspoint/php:8.5-fpm-alpine
-
-docker buildx build --no-cache -t vspoint/php:8.5-fpm-alpine-production php/8.5-fpm-alpine-production/.
-docker push vspoint/php:8.5-fpm-alpine-production
+		docker run --rm "$tag" sh -c 'php -v && php -m && composer --version'
+	done
+done

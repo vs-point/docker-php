@@ -1,0 +1,16 @@
+[
+	{
+		"php": "8.5",
+		"image": "php:8.5-fpm-alpine",
+		"ds": "v1.6.0",
+		"redis": "6.3.0",
+		"xdebug": "3.5.3"
+	},
+	{
+		"php": "8.6",
+		"image": "php:8.6-rc-fpm-alpine",
+		"ds": "v1.6.0",
+		"redis": "57b584f676a504842d86c4dafb6b8f9abaf21ba2",
+		"xdebug": "3.6.0alpha1"
+	}
+]
