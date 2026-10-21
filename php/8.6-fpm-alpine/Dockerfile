@@ -29,11 +29,11 @@ RUN set -eux \
 		zlib-dev \
 	&& docker-php-source extract \
 	&& mkdir -p /usr/src/php/ext/ds /usr/src/php/ext/redis /usr/src/php/ext/xdebug \
-	&& curl -fsSL "https://pecl.php.net/get/ds-1.6.0.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/ds-1.6.0.tgz" \
 		| tar -xz -C /usr/src/php/ext/ds --strip-components=1 \
-	&& curl -fsSL "https://github.com/phpredis/phpredis/archive/57b584f676a504842d86c4dafb6b8f9abaf21ba2.tar.gz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://github.com/phpredis/phpredis/archive/57b584f676a504842d86c4dafb6b8f9abaf21ba2.tar.gz" \
 		| tar -xz -C /usr/src/php/ext/redis --strip-components=1 \
-	&& curl -fsSL "https://github.com/xdebug/xdebug/archive/3.6.0alpha1.tar.gz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://github.com/xdebug/xdebug/archive/3.6.0alpha1.tar.gz" \
 		| tar -xz -C /usr/src/php/ext/xdebug --strip-components=1 \
 	&& /usr/local/bin/patch-ds.sh \
 	&& docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \

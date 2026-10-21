@@ -27,13 +27,13 @@ RUN set -eux \
 		zlib-dev \
 	&& docker-php-source extract \
 	&& mkdir -p /usr/src/php/ext/ds /usr/src/php/ext/memcache /usr/src/php/ext/redis /usr/src/php/ext/xdebug \
-	&& curl -fsSL "https://pecl.php.net/get/ds-1.3.0.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/ds-1.3.0.tgz" \
 		| tar -xz -C /usr/src/php/ext/ds --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/memcache-8.0.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/memcache-8.0.tgz" \
 		| tar -xz -C /usr/src/php/ext/memcache --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/redis-5.3.2.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/redis-5.3.2.tgz" \
 		| tar -xz -C /usr/src/php/ext/redis --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/xdebug-3.0.2.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/xdebug-3.0.2.tgz" \
 		| tar -xz -C /usr/src/php/ext/xdebug --strip-components=1 \
 	&& docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
 	&& docker-php-ext-install -j"$(nproc)" \

@@ -26,9 +26,9 @@ RUN set -eux \
 		zlib-dev \
 	&& docker-php-source extract \
 	&& mkdir -p /usr/src/php/ext/ds /usr/src/php/ext/redis \
-	&& curl -fsSL "https://pecl.php.net/get/ds-1.6.0.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/ds-1.6.0.tgz" \
 		| tar -xz -C /usr/src/php/ext/ds --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/redis-6.3.0.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/redis-6.3.0.tgz" \
 		| tar -xz -C /usr/src/php/ext/redis --strip-components=1 \
 	&& docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
 	&& docker-php-ext-install -j"$(nproc)" \

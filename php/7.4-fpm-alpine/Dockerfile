@@ -33,21 +33,21 @@ RUN set -eux \
 		zlib-dev \
 	&& docker-php-source extract \
 	&& mkdir -p /usr/src/php/ext/amqp /usr/src/php/ext/ds /usr/src/php/ext/memcache /usr/src/php/ext/memcached /usr/src/php/ext/mosquitto /usr/src/php/ext/redis /usr/src/php/ext/ssh2 /usr/src/php/ext/xdebug \
-	&& curl -fsSL "https://pecl.php.net/get/amqp-1.10.2.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/amqp-1.10.2.tgz" \
 		| tar -xz -C /usr/src/php/ext/amqp --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/ds-1.5.0.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/ds-1.5.0.tgz" \
 		| tar -xz -C /usr/src/php/ext/ds --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/memcache-4.0.5.2.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/memcache-4.0.5.2.tgz" \
 		| tar -xz -C /usr/src/php/ext/memcache --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/memcached-3.1.5.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/memcached-3.1.5.tgz" \
 		| tar -xz -C /usr/src/php/ext/memcached --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/Mosquitto-0.4.0.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/Mosquitto-0.4.0.tgz" \
 		| tar -xz -C /usr/src/php/ext/mosquitto --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/redis-5.0.0.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/redis-5.0.0.tgz" \
 		| tar -xz -C /usr/src/php/ext/redis --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/ssh2-1.2.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/ssh2-1.2.tgz" \
 		| tar -xz -C /usr/src/php/ext/ssh2 --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/xdebug-2.9.6.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/xdebug-2.9.6.tgz" \
 		| tar -xz -C /usr/src/php/ext/xdebug --strip-components=1 \
 	&& docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
 	&& docker-php-ext-install -j"$(nproc)" \

@@ -30,17 +30,17 @@ RUN set -eux \
 		zlib-dev \
 	&& docker-php-source extract \
 	&& mkdir -p /usr/src/php/ext/amqp /usr/src/php/ext/memcache /usr/src/php/ext/memcached /usr/src/php/ext/mosquitto /usr/src/php/ext/redis /usr/src/php/ext/ssh2 \
-	&& curl -fsSL "https://pecl.php.net/get/amqp-1.10.2.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/amqp-1.10.2.tgz" \
 		| tar -xz -C /usr/src/php/ext/amqp --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/memcache-2.2.7.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/memcache-2.2.7.tgz" \
 		| tar -xz -C /usr/src/php/ext/memcache --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/memcached-2.2.0.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/memcached-2.2.0.tgz" \
 		| tar -xz -C /usr/src/php/ext/memcached --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/Mosquitto-0.4.0.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/Mosquitto-0.4.0.tgz" \
 		| tar -xz -C /usr/src/php/ext/mosquitto --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/redis-4.2.0.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/redis-4.2.0.tgz" \
 		| tar -xz -C /usr/src/php/ext/redis --strip-components=1 \
-	&& curl -fsSL "https://pecl.php.net/get/ssh2-0.13.tgz" \
+	&& curl -fsSL --retry 5 --retry-delay 10 "https://pecl.php.net/get/ssh2-0.13.tgz" \
 		| tar -xz -C /usr/src/php/ext/ssh2 --strip-components=1 \
 	&& docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ --with-png-dir=/usr/include/ \
 	&& docker-php-ext-install -j"$(nproc)" \

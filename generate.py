@@ -135,7 +135,7 @@ def render(e, variant):
 		steps.append("mkdir -p " + " ".join(f"/usr/src/php/ext/{n}" for n in sorted(pecl)))
 		for n in sorted(pecl):
 			steps.append(
-				f'curl -fsSL "{source_url(n, pecl[n])}" \\\n'
+				f'curl -fsSL --retry 5 --retry-delay 10 "{source_url(n, pecl[n])}" \\\n'
 				f"\t\t| tar -xz -C /usr/src/php/ext/{n} --strip-components=1"
 			)
 	for p in e.get("patches", []):
