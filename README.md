@@ -31,7 +31,7 @@ git, curl, zip/unzip a exiftool.
 - `.github/workflows/docker.yml` – postaví image nativně na amd64 i arm64, otestuje je
   a pushne na Docker Hub:
   - po pushi do `master` ty image, jejichž Dockerfile se změnil,
-  - automaticky 1. den v měsíci podporované (ne `eol`) verze načisto bez cache,
+  - automaticky každý den ve 3:30 UTC podporované (ne `eol`) verze načisto bez cache,
     aby měly nejnovější patch verzi PHP a bezpečnostní opravy,
   - ručně přes Actions → Docker → Run workflow (prázdné = podporované, `all` = vše,
     nebo konkrétní tagy).

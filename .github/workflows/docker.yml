@@ -6,7 +6,7 @@ name: Docker
 # Co se staví:
 #   - push do master / pull request: jen image, jejichž php/<tag>/ se změnil
 #     (změna tohoto workflow = všechny podporované)
-#   - automaticky 1. den v měsíci: všechny podporované (ne "eol") verze načisto bez cache,
+#   - automaticky každý den ve 3:30 UTC: všechny podporované (ne "eol") verze načisto bez cache,
 #     aby obsahovaly nejnovější patch verzi PHP a bezpečnostní opravy základních image
 #   - ručně (Actions -> Docker -> Run workflow): podporované, "all" = úplně všechny,
 #     nebo vyjmenované tagy
@@ -33,8 +33,9 @@ on:
       - 'patch-ds.sh'
       - '.github/workflows/docker.yml'
   schedule:
-    # 1. den v měsíci ve 3:00 UTC
-    - cron: '0 3 1 * *'
+    # denně ve 3:30 UTC = 5:30 SELČ / 4:30 SEČ; GitHub plánované běhy občas zpozdí,
+    # rezerva zajistí, že image budou hotové nejpozději v 8:00 českého času
+    - cron: '30 3 * * *'
   workflow_dispatch:
     inputs:
       tags:
